@@ -1,0 +1,17 @@
+安庆,AQI,anqing,
+蚌埠,BBU,bengbu,
+蚌埠南,BBN,bengbunan,
+亳州,BZH,bozhou,
+亳州南,BZN,bozhounan,
+巢湖,CHU,chaohu,
+巢湖东,CHD,chaohudong,
+池州,CZH,chizhou,
+滁州,CZH,chuzhou,
+滁州北,CZB,chuzhoubei,
+当涂东,DTD,dangtudong,
+砀山,DSH,dangshan,
+砀山南,DSN,dangshannan,
+拉萨南,LSN,lasanan
+台北,TAB,tabei
+武汉北,WHB,wuhanbei
+南湖东,NHD,nanhudong

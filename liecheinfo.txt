@@ -1,0 +1,127 @@
+﻿#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+// Function to calculate the difference in minutes between two times
+int time_diff(char* start, char* end) {
+    int h1, m1, s1, h2, m2, s2;
+    sscanf(start, "%d:%d:%d", &h1, &m1, &s1);
+    sscanf(end, "%d:%d:%d", &h2, &m2, &s2);
+
+    // Convert the times to minutes
+    int time1 = h1 * 60 + m1;
+    int time2 = h2 * 60 + m2;
+
+    // If the end time is earlier than the start time, it means the time has crossed midnight
+    if (time2 < time1) {
+        time2 += 24 * 60;  // Add 24 hours to the end time
+    }
+
+    return time2 - time1;
+}
+
+void liecheinfo() {
+    char train_num[10];
+    char prev_time[10] = "";
+
+    FILE* file = fopen("train2007.txt", "r");
+    if (file == NULL) {
+        printf(" ?    ? \n");
+        return;
+    }
+
+    do {
+        printf("     ? Σ ");
+        scanf("%s", train_num);
+
+        char line[256];
+        int found = 0;
+        while (fgets(line, sizeof(line), file)) {
+            char num1[10], num2[10];
+            char station[50], time1[10], time2[10];
+
+            sscanf(line, "%[^,],%[^,],%*d,%[^,],%[^,],%s", num1, num2, station, time1, time2);
+            
+
+            
+            if ((strcmp(num1, train_num) == 0 || strcmp(num2, train_num) == 0)) {
+                if (strcmp(num2, "nan") == 0) {
+                    int stay_time = time_diff(time1, time2);
+                    int total_time = strcmp(prev_time, "") == 0 ? 0 : time_diff(prev_time, time1);
+                    if (strcmp(time1, "START") == 0) {
+                        printf("    : %s\t?  : %s\t?  ?,   ??  : %s\n", num1, station, time2);
+                        found = 1;
+                        strcpy(prev_time, time2);
+                    }
+                    else if (strcmp(time1, time2) == 0) {
+                        printf("    : %s\t?  : %s\t ? ?\t  ??  : %s", num1, station, time2);
+                        if (total_time >= 60) {
+                            printf(",   ?: %dС?%d    \n", total_time / 60, total_time - 60 * (total_time / 60));
+                        }
+                        else {
+                            printf(",   ?: %d    \n", total_time);
+                        }
+                    }
+                    else {
+                        printf("    : %s\t?  : %s\t  ??  : %s, ?  : %d    ,   ??  : %s", num1, station, time1, stay_time, time2);
+                        if (stay_time >= 15) {
+                            printf(", **   ?   **");
+                        }
+                        if (total_time >= 60) {
+                            printf(",   ?: %dС?%d    \n", total_time / 60, total_time - 60 * (total_time / 60));
+                        }
+                        else {
+                            printf(",   ?: %d    \n", total_time);
+                        }
+                        found = 1;
+                        strcpy(prev_time, time2);
+                    }
+                }
+                else {
+                    if ((strcmp(num1, train_num) == 0 || strcmp(num2, train_num) == 0)) {
+                        int stay_time = time_diff(time1, time2);
+                        int total_time = strcmp(prev_time, "") == 0 ? 0 : time_diff(prev_time, time1);
+                        if (strcmp(time1, "START") == 0) {
+                            printf("    : %s/%s\t?  : %s\t?  ?,   ??  : %s\n", num1, num2, station, time2);
+                            found = 1;
+                            strcpy(prev_time, time2);
+                        }
+                        else if (strcmp(time1, time2) == 0) {
+                            printf("    : %s/%s\t?  : %s\t ? ?,   ??  : %s", num1, num2, station, time2);
+                            if (total_time >= 60) {
+                                printf(",   ?: %dС?%d    \n", total_time / 60, total_time - 60 * (total_time / 60));
+                            }
+                            else {
+                                printf(",   ?: %d    \n", total_time);
+                            }
+                        }
+                        else {
+                            printf("    : %s/%s\t?  : %s\t  ??  : %s, ?  : %d    ,   ??  : %s", num1, num2, station, time1, stay_time, time2);
+                            if (stay_time >= 15) {
+                                printf(", **   ?   **");
+                            }
+                            if (total_time >= 60) {
+                                printf(",   ?: %dС?%d    \n", total_time / 60, total_time - 60 * (total_time / 60));
+                            }
+                            else {
+                                printf(",   ?: %d    \n", total_time);
+                            }
+                            found = 1;
+                            strcpy(prev_time, time2);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!found) {
+            printf(" ?   \n");
+        }
+
+        // Reset the file pointer to the beginning of the file
+        fseek(file, 0, SEEK_SET);
+
+    } while (strcmp(train_num, " ?   ?") != 0);
+
+    fclose(file);
+}
