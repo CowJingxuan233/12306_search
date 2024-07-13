@@ -3,6 +3,33 @@ import json
 from tabulate import tabulate
 from datetime import datetime, timedelta
 import re
+#hh-mm的时间变成dd-hh-mm
+#last和running搞反了
+def time_convert(last_running_time,running_time):
+    #print(running_time,last_running_time)
+    if running_time == "":
+        return ""
+    if last_running_time == "":
+        last_running_time = "00:00"
+    running_time_h = int(running_time.split(':')[0])
+    running_time_m = int(running_time.split(':')[1])
+    last_running_time_h = int(last_running_time.split(':')[0])
+    last_running_time_m = int(last_running_time.split(':')[1])
+    running_d = 0
+    if int(last_running_time_h) - int(running_time_h) >= 24:
+        running_d = int(last_running_time_h - running_time_h) // 24
+    lishi_h = last_running_time_h - running_time_h - running_d *24
+    lishi_m = last_running_time_m - running_time_m
+    if lishi_m < 0:
+        lishi_h -= 1
+        lishi_m += 60
+    if running_d == 0 and lishi_h == 0 and lishi_m == 0:
+        return ""
+    if running_d == 0:
+        return str(lishi_h) + "小时" + str(lishi_m) + "分"
+    else:
+        return str(f"{running_d}天{lishi_h}小时{lishi_m}分")
+
 #判断是不是一个正确的日期
 def is_valid_date(date_str):
     # 定义正则表达式模式来匹配 "年-月-日" 格式
@@ -61,8 +88,8 @@ def get_train_info_llt(train, date):
             response = requests.post(url_number, data=data_number, headers=headers_number)  # requests会自动把data中的键值对进行编码
 
             if response.status_code != 200:
-                return response.status_code
-
+                err_string = "1,出现请求故障："+str(response.status_code)
+                return err_string
             train_info_query_result = response.json()
 
             if 'data' in train_info_query_result and isinstance(train_info_query_result['data'], dict) and 'data' in train_info_query_result['data'] and isinstance(train_info_query_result['data']['data'], list) and len(train_info_query_result['data']['data']) > 0:
@@ -81,7 +108,8 @@ def get_train_info_llt(train, date):
 
                 #print(train_index, train_number, begin_station, departure_time, end_station_name, arrival_time, day_count, duration_minutes, distance, train_type, cr_type)
             else:
-                return 1
+                err_string = str(1)+","+f"未查询到{train}的时刻信息"
+                return err_string
 
             url_detail = "https://rail.moefactory.com/api/trainDetails/query"
 
@@ -277,14 +305,15 @@ def extract_and_format_data(json_data,train_no):
     unique_station_train_code = '/'.join(sorted(set(station_train_codes)))
     
     total_stations = len(data)
-    if train_no[0] in ['D', 'G', 'C', 'S', 'Z', 'T']:
+    if train_no[0] in ['D', 'G', 'C', 'S', 'Z', 'T', 'Y']:
         train_type_mapping = {
             'D': '动车',
             'G': '高速',
             'C': '城际',
             'S': '市郊',
             'Z': '直达特快',
-            'T': '特快'
+            'T': '特快',
+            'Y': '旅游'
         }
         if train_no[0] == 'D' and train_no[1:].isdigit() and int(train_no[1:]) < 300:
             train_type = "\033[32m复兴号\033[0m动车组列车" 
@@ -327,15 +356,17 @@ def get_stop_info(json_data):
     
     stop_info_list = []
     null_info = ""
+    last_running_time = ""
     for index, stop in enumerate(data, start=1):
         station_train_code = stop['station_train_code']
         station_name = stop['station_name']
         arrive_time = stop['arrive_time'] if stop['arrive_time'] != "----" else ""
         start_time = stop['start_time']
-        running_time = stop['running_time']
+        running_time = time_convert(stop['running_time'],last_running_time)
         stay_time = calculate_duration(arrive_time, start_time, 0, 0)
         stop_info = f"{station_name},{station_train_code},{arrive_time},{start_time},{stay_time},{running_time},{null_info},{null_info},{null_info}"
         #print(stop_info)
+        last_running_time = stop['running_time']
         stop_info_list.append(stop_info)
     
     #print(stop_info_list)
@@ -353,6 +384,7 @@ def train_code_to_12306(train_code,date_str):
     # 解析返回的JSON数据
     data = json.loads(response.text)
 
+    #print(response.text)
     #如果json数据中没有data字段，说明没有找到该车次信息
     if "data" not in data:
         return -1
@@ -368,24 +400,59 @@ def train_code_to_12306(train_code,date_str):
             "train_no": item["train_no"]
         })
 
-    if len(train_info_list) > 1:
+    if len(train_info_list) > 2:
         print("请选择列车：")
         data_rows_choose = []
         new_row_choose = ""
         choose_count = 1
+        data_count = 0
         for i, info in enumerate(train_info_list):
             new_row_choose_temp = (f"{i + 1},{info['station_train_code']},{info['from_station']},{info['to_station']},")
             new_row_choose += new_row_choose_temp
             choose_count += 1
             i += 1
             #new_row_choose_temp += ","
+            data_count += 1
             if choose_count == 4:
                 data_rows_choose.append(new_row_choose.split(",")) 
                 #删除空白元素
                 data_rows_choose[-1] = list(filter(lambda x: x != "", data_rows_choose[-1]))
                 new_row_choose = ""
                 choose_count = 1
+        
 
+        #print(data_rows_choose)
+        header_choose = [["序号", "车次", "出发站", "到达站", "序号", "车次", "出发站", "到达站","序号", "车次", "出发站", "到达站"]]
+        # 将表头和数据组合成一个表格
+        table_choose = header_choose + data_rows_choose
+            # 使用 tabulate 打印表格，tablefmt 可选择 "grid" 或 "fancy_grid" 或 "pipe" 等样式来形成实线
+        print(tabulate(table_choose, headers="firstrow", tablefmt="fancy_grid", colalign=("center",)*len(header_choose), maxcolwidths=[20]*len(header_choose[0])))
+
+            #清空表格
+        data_rows_choose.clear()
+        choice = int(input("请输入选择的列车号码："))
+        selected_train_no = train_info_list[choice - 1]["train_no"]
+        selected_train_code = train_info_list[choice - 1]["station_train_code"]
+    elif len(train_info_list) == 2:
+        print("请选择列车：")
+        data_rows_choose = []
+        new_row_choose = ""
+        choose_count = 1
+        data_count = 0
+        for i, info in enumerate(train_info_list):
+            new_row_choose_temp = (f"{i + 1},{info['station_train_code']},{info['from_station']},{info['to_station']},")
+            new_row_choose += new_row_choose_temp
+            choose_count += 1
+            i += 1
+            #new_row_choose_temp += ","
+            data_count += 1
+            if choose_count == 3:
+                data_rows_choose.append(new_row_choose.split(",")) 
+                #删除空白元素
+                data_rows_choose[-1] = list(filter(lambda x: x != "", data_rows_choose[-1]))
+                new_row_choose = ""
+                choose_count = 1
+        
         #print(data_rows_choose)
         header_choose = [["序号", "车次", "出发站", "到达站", "序号", "车次", "出发站", "到达站","序号", "车次", "出发站", "到达站"]]
         # 将表头和数据组合成一个表格
@@ -627,7 +694,7 @@ def get_train_zhengwandian(train, date):
 if __name__ == '__main__':
     while True:
         train = input("请输入车次：")
-        if re.match(r'^(D|Z|T|K|N|L|A|Y|G|S|C)\d{1,4}|\d{5}$', train):
+        if re.match(r'^(D|Z|T|K|N|L|A|Y|G|S|C)\d{1,4}|\d{4}|\d{5}$', train):
             date_str = input("请输入日期(2024-07-12)，空白则获取今天为时间：")
         else:
             print(f"{train}不是一个有效的车次 ")
@@ -692,7 +759,7 @@ if __name__ == '__main__':
                 train_code = train_code.split('/')[0]
                 stop_info_list = get_stop_info(json_data)
                 data_rows_12306 = []
-                header_12306 = [["车站","车次","到达时间","出发时间","停留","当前历时","里程","均速","车站地点"]]
+                header_12306 = [["车站","车次","到达时间","出发时间","停留","区间历时","里程","均速","车站地点"]]
                 print("时刻表：")
                 for stop_info in stop_info_list:
                     #print(stop_info_list)
