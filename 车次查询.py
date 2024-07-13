@@ -694,7 +694,7 @@ def get_train_zhengwandian(train, date):
 if __name__ == '__main__':
     while True:
         train = input("请输入车次：")
-        if re.match(r'^(D|Z|T|K|N|L|A|Y|G|S|C)\d{1,4}|\d{4}|\d{5}$', train):
+        if re.match(r'^(D|Z|T|K|N|L|A|Y|G|S|C)\d{1,4}|\d{1,4}|\d{5}$', train):
             date_str = input("请输入日期(2024-07-12)，空白则获取今天为时间：")
         else:
             print(f"{train}不是一个有效的车次 ")
